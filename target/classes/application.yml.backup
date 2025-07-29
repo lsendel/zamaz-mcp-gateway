@@ -1,0 +1,231 @@
+spring:
+  application:
+    name: mcp-gateway
+  
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: false
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+        - name: SecurityHeaders
+        - name: RequestValidation
+        - name: Authentication
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOriginPatterns: 
+              - "http://localhost:*"
+              - "${CORS_ALLOWED_ORIGINS}"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Requested-With
+              - X-Organization-ID
+              - X-Request-ID
+            exposedHeaders:
+              - X-Total-Count
+              - X-Rate-Limit-Remaining
+              - X-Request-ID
+            allowCredentials: true
+            maxAge: 3600
+      routes:
+        # Organization Service
+        - id: organization-service
+          uri: ${DOCKER_ORGANIZATION_SERVICE_URL}
+          predicates:
+            - Path=/api/v1/organizations/**, /api/v1/auth/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: organization-cb
+                fallbackUri: forward:/fallback/organization
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY, SERVICE_UNAVAILABLE
+                methods: GET, POST
+                backoff:
+                  firstBackoff: 10ms
+                  maxBackoff: 50ms
+                  factor: 2
+                  basedOnPreviousValue: false
+        
+        # LLM Service
+        - id: llm-service
+          uri: ${DOCKER_LLM_SERVICE_URL}
+          predicates:
+            - Path=/api/v1/llm/**, /api/v1/completions/**, /api/v1/providers/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: llm-cb
+                fallbackUri: forward:/fallback/llm
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 50
+                redis-rate-limiter.burstCapacity: 100
+                redis-rate-limiter.requestedTokens: 1
+        
+        # Controller Service
+        - id: controller-service
+          uri: ${DOCKER_CONTROLLER_SERVICE_URL}
+          predicates:
+            - Path=/api/v1/debates/**, /api/v1/rounds/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: controller-cb
+                fallbackUri: forward:/fallback/controller
+        
+        # RAG Service
+        - id: rag-service
+          uri: ${DOCKER_RAG_SERVICE_URL}
+          predicates:
+            - Path=/api/v1/rag/**, /api/v1/knowledge/**, /api/v1/search/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: rag-cb
+                fallbackUri: forward:/fallback/rag
+        
+        # Template Service
+        - id: template-service
+          uri: ${DOCKER_TEMPLATE_SERVICE_URL}
+          predicates:
+            - Path=/api/v1/templates/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: template-cb
+                fallbackUri: forward:/fallback/template
+
+  # Redis configuration imported from common module
+  config:
+    import:
+      - "classpath:application-redis.yml"
+  
+  profiles:
+    include:
+      - redis-high-throughput
+
+server:
+  port: ${SERVER_PORT:8080}
+  
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway,prometheus
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        security.authentication.duration: true
+        security.authorization.duration: true
+      percentiles:
+        http.server.requests: 0.5, 0.9, 0.95, 0.99
+        security.authentication.duration: 0.5, 0.9, 0.95, 0.99
+        security.authorization.duration: 0.5, 0.9, 0.95, 0.99
+    tags:
+      application: mcp-gateway
+      environment: ${SPRING_PROFILES_ACTIVE:development}
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.cloud.gateway.filter: DEBUG
+    com.zamaz.mcp.gateway: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+    instances:
+      organization-cb:
+        baseConfig: default
+      llm-cb:
+        baseConfig: default
+        waitDurationInOpenState: 10s
+      controller-cb:
+        baseConfig: default
+      rag-cb:
+        baseConfig: default
+      template-cb:
+        baseConfig: default
+
+# Rate Limiter Configuration
+resilience4j:
+  ratelimiter:
+    configs:
+      default:
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 5s
+    instances:
+      api-limiter:
+        baseConfig: default
+
+# WebSocket Configuration
+websocket:
+  max-connections-per-ip: 10
+  max-frame-size: 65536
+  idle-timeout: 300000
+  heartbeat-interval: 30000
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+
+# Email Configuration
+app:
+  email:
+    enabled: ${APP_EMAIL_ENABLED:false}
+    from: ${APP_EMAIL_FROM:noreply@mcp.com}
+    from-name: ${APP_EMAIL_FROM_NAME:MCP Platform}
+    base-url: ${APP_EMAIL_BASE_URL:http://localhost:3000}
+    provider: ${APP_EMAIL_PROVIDER:smtp}
+
+# Spring Mail Configuration (for SMTP)
+spring.mail:
+  host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+  port: ${SPRING_MAIL_PORT:587}
+  username: ${SPRING_MAIL_USERNAME:}
+  password: ${SPRING_MAIL_PASSWORD:}
+  properties:
+    mail:
+      smtp:
+        auth: ${SPRING_MAIL_SMTP_AUTH:true}
+        starttls:
+          enable: ${SPRING_MAIL_SMTP_STARTTLS_ENABLE:true}
+          required: ${SPRING_MAIL_SMTP_STARTTLS_REQUIRED:true}
+        connectiontimeout: 5000
+        timeout: 5000
+        writetimeout: 5000
+      debug: ${SPRING_MAIL_DEBUG:false}

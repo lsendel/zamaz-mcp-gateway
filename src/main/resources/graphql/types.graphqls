@@ -1,0 +1,444 @@
+# GraphQL Type Definitions for MCP Debate System
+
+# Core Types
+type Organization {
+    id: ID!
+    name: String!
+    description: String
+    settings: JSON
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    
+    # Relationships
+    users(
+        first: Int = 10
+        after: String
+        filter: UserFilter
+    ): UserConnection! @auth(requires: USER)
+    
+    debates(
+        first: Int = 10
+        after: String
+        filter: DebateFilter
+    ): DebateConnection! @auth(requires: USER)
+    
+    stats: OrganizationStatistics! @auth(requires: ADMIN)
+}
+
+type User {
+    id: ID!
+    email: String!
+    name: String!
+    role: Role!
+    isActive: Boolean!
+    lastLoginAt: DateTime
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    
+    # Relationships
+    organization: Organization! @auth(requires: USER)
+    
+    debates(
+        first: Int = 10
+        after: String
+        filter: DebateFilter
+    ): DebateConnection! @auth(requires: USER)
+    
+    arguments(
+        first: Int = 10
+        after: String
+        debateId: ID
+    ): ArgumentConnection! @auth(requires: USER)
+    
+    votes(
+        first: Int = 10
+        after: String
+        debateId: ID
+    ): VoteConnection! @auth(requires: USER)
+    
+    # Statistics
+    profile: UserProfile! @auth(requires: USER)
+}
+
+type Debate {
+    id: ID!
+    title: String!
+    description: String!
+    status: DebateStatus!
+    tags: [String!]!
+    maxParticipants: Int
+    timeLimit: Int
+    rules: JSON
+    isPublic: Boolean!
+    startedAt: DateTime
+    endedAt: DateTime
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    
+    # Relationships
+    organization: Organization! @auth(requires: USER)
+    createdBy: User! @auth(requires: USER)
+    
+    participants(
+        first: Int = 10
+        after: String
+    ): UserConnection! @auth(requires: USER)
+    
+    arguments(
+        first: Int = 10
+        after: String
+        type: ArgumentType
+        parentId: ID
+    ): ArgumentConnection! @auth(requires: USER)
+    
+    votes(
+        first: Int = 10
+        after: String
+        type: VoteType
+    ): VoteConnection! @auth(requires: USER)
+    
+    # Statistics
+    stats: DebateStats! @auth(requires: USER)
+}
+
+type Argument {
+    id: ID!
+    content: String!
+    type: ArgumentType!
+    attachments: [String!]!
+    isDeleted: Boolean!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    
+    # Relationships
+    debate: Debate! @auth(requires: USER)
+    author: User! @auth(requires: USER)
+    parentArgument: Argument @auth(requires: USER)
+    
+    replies(
+        first: Int = 10
+        after: String
+    ): ArgumentConnection! @auth(requires: USER)
+    
+    votes(
+        first: Int = 10
+        after: String
+        type: VoteType
+    ): VoteConnection! @auth(requires: USER)
+    
+    # Statistics
+    stats: ArgumentStats! @auth(requires: USER)
+}
+
+type Vote {
+    id: ID!
+    voteType: VoteType!
+    comment: String
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    
+    # Relationships
+    argument: Argument! @auth(requires: USER)
+    user: User! @auth(requires: USER)
+}
+
+# Connection Types (for pagination)
+type OrganizationConnection {
+    edges: [OrganizationEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type OrganizationEdge {
+    node: Organization!
+    cursor: String!
+}
+
+type UserConnection {
+    edges: [UserEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type UserEdge {
+    node: User!
+    cursor: String!
+}
+
+type DebateConnection {
+    edges: [DebateEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type DebateEdge {
+    node: Debate!
+    cursor: String!
+}
+
+type ArgumentConnection {
+    edges: [ArgumentEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type ArgumentEdge {
+    node: Argument!
+    cursor: String!
+}
+
+type VoteConnection {
+    edges: [VoteEdge!]!
+    pageInfo: PageInfo!
+    totalCount: Int!
+}
+
+type VoteEdge {
+    node: Vote!
+    cursor: String!
+}
+
+type PageInfo {
+    hasNextPage: Boolean!
+    hasPreviousPage: Boolean!
+    startCursor: String
+    endCursor: String
+}
+
+# Profile and Statistics Types
+type UserProfile {
+    totalDebates: Int!
+    totalArguments: Int!
+    totalVotes: Int!
+    winRate: Float!
+    averageArgumentLength: Float!
+    topTags: [String!]!
+    recentActivity: [Activity!]!
+}
+
+type OrganizationStatistics {
+    totalUsers: Int!
+    activeUsers: Int!
+    totalDebates: Int!
+    activeDebates: Int!
+    totalArguments: Int!
+    totalVotes: Int!
+    engagementRate: Float!
+    growthRate: Float!
+}
+
+type DebateStats {
+    participantCount: Int!
+    argumentCount: Int!
+    voteCount: Int!
+    viewCount: Int!
+    averageArgumentLength: Float!
+    engagementScore: Float!
+    duration: Int
+    topContributors: [User!]!
+}
+
+type ArgumentStats {
+    voteCount: Int!
+    replyCount: Int!
+    forVotes: Int!
+    againstVotes: Int!
+    abstainVotes: Int!
+    score: Float!
+    engagement: Float!
+}
+
+type Activity {
+    id: ID!
+    type: ActivityType!
+    description: String!
+    relatedId: ID
+    relatedType: String
+    createdAt: DateTime!
+}
+
+enum ActivityType {
+    DEBATE_CREATED
+    DEBATE_JOINED
+    ARGUMENT_SUBMITTED
+    VOTE_CAST
+    DEBATE_COMPLETED
+    ORGANIZATION_JOINED
+}
+
+# Notification Types
+type Notification {
+    id: ID!
+    type: NotificationType!
+    title: String!
+    message: String!
+    isRead: Boolean!
+    relatedId: ID
+    relatedType: String
+    createdAt: DateTime!
+    
+    # Relationships
+    user: User! @auth(requires: USER)
+}
+
+enum NotificationType {
+    DEBATE_INVITATION
+    ARGUMENT_REPLY
+    VOTE_RECEIVED
+    DEBATE_STARTED
+    DEBATE_ENDED
+    MENTION
+    SYSTEM_UPDATE
+}
+
+# Search Types
+type SearchResult {
+    debates: DebateConnection!
+    arguments: ArgumentConnection!
+    users: UserConnection!
+    organizations: OrganizationConnection!
+}
+
+# Real-time Types
+type PresenceInfo {
+    userId: ID!
+    user: User!
+    status: PresenceStatus!
+    lastSeen: DateTime!
+}
+
+enum PresenceStatus {
+    ONLINE
+    AWAY
+    OFFLINE
+}
+
+# Analytics Types
+type AnalyticsData {
+    metric: String!
+    value: Float!
+    timestamp: DateTime!
+    dimensions: JSON
+}
+
+type PerformanceMetrics {
+    responseTime: Float!
+    throughput: Float!
+    errorRate: Float!
+    availability: Float!
+    timestamp: DateTime!
+}
+
+# Feature Flag Types
+type FeatureFlag {
+    name: String!
+    enabled: Boolean!
+    description: String!
+    conditions: JSON
+    rolloutPercentage: Float!
+}
+
+# Cache Types
+type CacheInfo {
+    key: String!
+    ttl: Int!
+    size: Int!
+    hitRate: Float!
+    lastAccessed: DateTime!
+}
+
+# Health Check Types
+type HealthCheck {
+    service: String!
+    status: HealthStatus!
+    checks: [HealthCheckDetail!]!
+    timestamp: DateTime!
+}
+
+type HealthCheckDetail {
+    name: String!
+    status: HealthStatus!
+    message: String
+    responseTime: Float!
+}
+
+enum HealthStatus {
+    UP
+    DOWN
+    DEGRADED
+    UNKNOWN
+}
+
+# Rate Limiting Types
+type RateLimitInfo {
+    limit: Int!
+    remaining: Int!
+    resetTime: DateTime!
+    window: Int!
+}
+
+# Audit Types
+type AuditLog {
+    id: ID!
+    action: String!
+    resource: String!
+    resourceId: ID!
+    details: JSON
+    ipAddress: String
+    userAgent: String
+    timestamp: DateTime!
+    
+    # Relationships
+    user: User @auth(requires: ADMIN)
+    organization: Organization @auth(requires: ADMIN)
+}
+
+# File Upload Types
+type FileUpload {
+    id: ID!
+    filename: String!
+    mimetype: String!
+    encoding: String!
+    size: Int!
+    url: String!
+    createdAt: DateTime!
+    
+    # Relationships
+    uploadedBy: User! @auth(requires: USER)
+}
+
+# Webhook Types
+type Webhook {
+    id: ID!
+    url: String!
+    events: [String!]!
+    isActive: Boolean!
+    secret: String!
+    createdAt: DateTime!
+    
+    # Relationships
+    organization: Organization! @auth(requires: ADMIN)
+}
+
+# Integration Types
+type Integration {
+    id: ID!
+    type: IntegrationType!
+    name: String!
+    config: JSON!
+    isActive: Boolean!
+    lastSync: DateTime
+    createdAt: DateTime!
+    
+    # Relationships
+    organization: Organization! @auth(requires: ADMIN)
+}
+
+enum IntegrationType {
+    SLACK
+    DISCORD
+    TEAMS
+    WEBHOOK
+    API
+    SSO
+}

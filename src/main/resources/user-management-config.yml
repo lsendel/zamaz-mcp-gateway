@@ -1,0 +1,158 @@
+# User Management Configuration
+user-management:
+  password:
+    # Password strength requirements
+    min-length: 8
+    max-length: 128
+    require-uppercase: true
+    require-lowercase: true
+    require-numbers: true
+    require-special-chars: true
+    special-chars: "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    
+    # Password history and rotation
+    prevent-reuse-count: 5
+    max-age-days: 90
+    warn-expiry-days: 7
+    
+    # Account lockout policy
+    max-failed-attempts: 5
+    lockout-duration-minutes: 30
+    lockout-increment-factor: 2.0
+    max-lockout-duration-hours: 24
+    
+  email:
+    # Email verification settings
+    verification-token-expiry-hours: 24
+    verification-resend-limit: 3
+    verification-resend-cooldown-minutes: 5
+    
+    # Password reset settings
+    reset-token-expiry-hours: 1
+    reset-request-limit-per-hour: 3
+    reset-cooldown-minutes: 2
+    
+    # Email rate limiting
+    max-emails-per-user-per-hour: 10
+    max-emails-per-ip-per-hour: 20
+    
+    # Email templates configuration
+    templates:
+      base-url: "${app.email.base-url:http://localhost:3000}"
+      from-address: "${app.email.from:noreply@mcp.com}"
+      from-name: "MCP Platform"
+      support-email: "support@mcp.com"
+      
+      # Template customization
+      brand-color: "#007bff"
+      logo-url: "${app.email.base-url:http://localhost:3000}/logo.png"
+      company-name: "MCP Platform"
+      
+  security:
+    # Registration security
+    require-email-verification: true
+    allow-duplicate-emails: false
+    block-disposable-emails: true
+    
+    # Session management
+    max-concurrent-sessions: 3
+    session-timeout-minutes: 30
+    remember-me-duration-days: 30
+    
+    # Rate limiting
+    registration-rate-limit-per-ip-per-hour: 5
+    login-rate-limit-per-ip-per-minute: 10
+    
+    # Two-factor authentication
+    enable-2fa: false
+    enforce-2fa-for-admins: false
+    
+  audit:
+    # Audit logging configuration
+    log-all-user-operations: true
+    log-sensitive-operations: true
+    retain-audit-logs-days: 365
+    
+    # Events to audit
+    audit-events:
+      - USER_REGISTERED
+      - USER_LOGIN
+      - USER_LOGOUT
+      - PASSWORD_CHANGED
+      - EMAIL_VERIFIED
+      - ACCOUNT_DEACTIVATED
+      - PROFILE_UPDATED
+      - FAILED_LOGIN
+      - PASSWORD_RESET_REQUESTED
+      - PASSWORD_RESET_COMPLETED
+      
+  compliance:
+    # GDPR compliance
+    enable-gdpr-features: true
+    data-retention-days: 2555  # 7 years
+    allow-data-export: true
+    allow-account-deletion: true
+    
+    # Privacy settings
+    default-privacy-level: "STANDARD"
+    require-consent-for-marketing: true
+    cookie-consent-required: true
+    
+  notifications:
+    # User notification preferences
+    notify-on-login-from-new-device: true
+    notify-on-password-change: true
+    notify-on-email-change: true
+    notify-on-profile-update: false
+    
+    # Admin notifications
+    notify-admins-on-suspicious-activity: true
+    notify-admins-on-account-lockout: true
+    notify-admins-on-mass-registration: true
+    
+  features:
+    # Feature flags
+    enable-social-login: false
+    enable-sso: false
+    enable-api-keys: true
+    enable-organization-invites: true
+    
+    # User profile features
+    allow-username-change: false
+    allow-email-change: true
+    require-current-password-for-changes: true
+    
+# Spring Boot integration
+spring:
+  validation:
+    # Enable validation for user management DTOs
+    user-management:
+      validate-passwords: true
+      validate-emails: true
+      validate-names: true
+      
+management:
+  metrics:
+    # Expose user management metrics
+    tags:
+      service: user-management
+    export:
+      prometheus:
+        enabled: true
+        descriptions: true
+        
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+        
+# Logging configuration for user management
+logging:
+  level:
+    com.zamaz.mcp.gateway.service.UserManagementService: INFO
+    com.zamaz.mcp.gateway.service.EmailService: INFO
+    com.zamaz.mcp.security.audit: INFO
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{userId}] [%X{orgId}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{userId}] [%X{orgId}] %logger{36} - %msg%n"

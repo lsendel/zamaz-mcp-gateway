@@ -1,0 +1,164 @@
+# Security Configuration for MCP Gateway
+
+# Rate Limiting Configuration
+rate-limit:
+  enabled: true
+  requests-per-minute: 60        # Base rate limit per minute
+  requests-per-hour: 1000        # Base rate limit per hour
+  burst-capacity: 10             # Maximum burst requests
+  authenticated-multiplier: 2    # Multiplier for authenticated users
+  
+  # Endpoint-specific limits
+  endpoints:
+    auth:
+      requests-per-minute: 5     # Stricter limits for auth endpoints
+      requests-per-hour: 20
+    api:
+      requests-per-minute: 100   # Higher limits for general API
+      requests-per-hour: 2000
+
+# DDoS Protection Configuration
+ddos:
+  protection:
+    enabled: true
+    max-connections-per-ip: 50         # Maximum concurrent connections per IP
+    request-size-limit: 1048576        # 1MB request size limit
+    suspicious-pattern-threshold: 5     # Pattern detection threshold
+    
+    # Auto-blocking thresholds
+    auto-block:
+      pattern-violations: 5            # Block after N pattern violations
+      connection-violations: 3         # Block after N connection violations
+      block-duration: 3600             # Block duration in seconds (1 hour)
+
+# Circuit Breaker Configuration
+circuit-breaker:
+  enabled: true
+  failure-threshold: 5           # Open circuit after N failures
+  success-threshold: 3           # Close circuit after N successes
+  timeout: 30000                 # Circuit open timeout (30 seconds)
+  half-open-requests: 3          # Requests allowed in half-open state
+
+# Security Headers Configuration
+security:
+  headers:
+    enabled: true
+    csp: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https:; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    hsts-max-age: 31536000       # 1 year
+    frame-options: "DENY"
+    content-type-options: "nosniff"
+    referrer-policy: "strict-origin-when-cross-origin"
+    permissions-policy: "geolocation=(), microphone=(), camera=()"
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000           # 24 hours in milliseconds
+  refresh-expiration: 604800000  # 7 days in milliseconds
+
+# Redis Configuration for Security Features
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      jedis:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 2
+          max-wait: 2000ms
+
+# CORS Configuration
+cors:
+  allowed-origins:
+    - http://localhost:3000
+    - http://localhost:3001
+    - https://app.yourdomain.com
+  allowed-methods:
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - PATCH
+    - OPTIONS
+  allowed-headers:
+    - Authorization
+    - Content-Type
+    - X-Requested-With
+    - Accept
+    - Origin
+    - X-Organization-Id
+    - X-Request-ID
+  max-age: 3600
+
+# Monitoring and Alerting
+monitoring:
+  security:
+    enabled: true
+    metrics-interval: 60s        # How often to collect metrics
+    alert-thresholds:
+      rate-limit-violations: 10  # Alert after N violations
+      ddos-blocks: 5            # Alert after N DDoS blocks
+      circuit-breaker-opens: 3  # Alert after N circuit opens
+
+# Environment-specific overrides
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+
+# Production Security Settings
+rate-limit:
+  requests-per-minute: 100
+  requests-per-hour: 2000
+  
+ddos:
+  protection:
+    max-connections-per-ip: 100
+    request-size-limit: 2097152   # 2MB for production
+    
+security:
+  headers:
+    hsts-max-age: 63072000        # 2 years for production
+
+---
+spring:
+  config:
+    activate:
+      on-profile: development
+
+# Development Security Settings (more relaxed)
+rate-limit:
+  enabled: false                 # Disable rate limiting in dev
+
+ddos:
+  protection:
+    enabled: false               # Disable DDoS protection in dev
+
+circuit-breaker:
+  enabled: false                 # Disable circuit breaker in dev
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+
+# Test Security Settings
+rate-limit:
+  enabled: false
+
+ddos:
+  protection:
+    enabled: false
+
+circuit-breaker:
+  enabled: false
+
+security:
+  headers:
+    enabled: false

@@ -1,0 +1,347 @@
+# API Gateway Configuration
+spring:
+  application:
+    name: mcp-gateway
+    
+  cloud:
+    gateway:
+      # Global timeout configuration
+      httpclient:
+        connect-timeout: 5000
+        response-timeout: 30s
+        pool:
+          type: elastic
+          max-idle-time: 10s
+          max-life-time: 10m
+          
+      # Global CORS configuration (overridden by GatewayConfig)
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Requested-With
+              - X-Organization-ID
+              - X-Request-ID
+            exposedHeaders:
+              - X-Total-Count
+              - X-Rate-Limit-Remaining
+              - X-Request-ID
+            allowCredentials: true
+            maxAge: 3600
+            
+      # Default filters applied to all routes
+      default-filters:
+        - name: DedupeResponseHeader
+          args:
+            name: Access-Control-Allow-Origin
+            strategy: RETAIN_FIRST
+        - name: DedupeResponseHeader
+          args:
+            name: Access-Control-Allow-Credentials
+            strategy: RETAIN_FIRST
+            
+      # Metrics configuration
+      metrics:
+        enabled: true
+        tags:
+          application: ${spring.application.name}
+          
+    # Load balancer configuration
+    loadbalancer:
+      ribbon:
+        enabled: false
+      cache:
+        enabled: true
+        caffeine:
+          spec: maximumSize=1000,expireAfterWrite=60s
+          
+    # Circuit breaker configuration
+    circuitbreaker:
+      resilience4j:
+        enabled: true
+        
+  # Redis configuration for rate limiting and caching
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 8
+          min-idle: 2
+          max-wait: -1ms
+          
+# Gateway service configuration
+gateway:
+  services:
+    organization:
+      url: ${ORGANIZATION_SERVICE_URL:http://localhost:5005}
+      timeout: 5s
+      
+    controller:
+      url: ${CONTROLLER_SERVICE_URL:http://localhost:5013}
+      timeout: 10s
+      
+    llm:
+      url: ${LLM_SERVICE_URL:http://localhost:5002}
+      timeout: 60s
+      instances:
+        - ${LLM_SERVICE_URL_1:http://localhost:5002}
+        - ${LLM_SERVICE_URL_2:http://localhost:5102}
+        - ${LLM_SERVICE_URL_3:http://localhost:5202}
+        
+    rag:
+      url: ${RAG_SERVICE_URL:http://localhost:5004}
+      timeout: 30s
+      
+    template:
+      url: ${TEMPLATE_SERVICE_URL:http://localhost:5006}
+      timeout: 5s
+      
+    context:
+      url: ${CONTEXT_SERVICE_URL:http://localhost:5007}
+      timeout: 10s
+      
+    security:
+      url: ${SECURITY_SERVICE_URL:http://localhost:5008}
+      timeout: 5s
+      
+    workflow:
+      url: ${WORKFLOW_SERVICE_URL:http://localhost:5009}
+      timeout: 10s
+      
+    workflow-ui:
+      url: ${WORKFLOW_UI_URL:http://localhost:3001}
+      timeout: 5s
+      
+  # Rate limiting configuration
+  rate-limiting:
+    enabled: true
+    default:
+      limit: 100
+      duration: 1s
+      burst-capacity: 200
+      
+    endpoints:
+      auth:
+        limit: 5
+        duration: 1m
+        burst-capacity: 10
+        
+      llm:
+        limit: 10
+        duration: 1m
+        burst-capacity: 20
+        
+      public:
+        limit: 50
+        duration: 1s
+        burst-capacity: 100
+        
+  # Circuit breaker configuration
+  circuit-breaker:
+    default:
+      failure-rate-threshold: 50
+      slow-call-rate-threshold: 50
+      slow-call-duration-threshold: 3s
+      sliding-window-size: 100
+      minimum-number-of-calls: 10
+      wait-duration-in-open-state: 60s
+      permitted-number-of-calls-in-half-open-state: 10
+      
+    services:
+      llm:
+        slow-call-duration-threshold: 30s
+        failure-rate-threshold: 30
+        
+      rag:
+        slow-call-duration-threshold: 10s
+        failure-rate-threshold: 40
+        
+  # Caching configuration
+  caching:
+    enabled: true
+    default-ttl: 5m
+    
+    caches:
+      debates:
+        ttl: 5m
+        user-specific: false
+        org-specific: true
+        
+      templates:
+        ttl: 1h
+        user-specific: false
+        org-specific: true
+        
+      rag-search:
+        ttl: 15m
+        user-specific: true
+        org-specific: true
+        
+      api-docs:
+        ttl: 24h
+        user-specific: false
+        org-specific: false
+        
+  # Security configuration
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      expiration: ${JWT_EXPIRATION:3600}
+      
+    allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+    
+    rate-limit:
+      ip-based:
+        enabled: true
+        default-limit: 1000
+        
+      user-based:
+        enabled: true
+        default-limit: 10000
+        
+  # Monitoring configuration
+  monitoring:
+    metrics:
+      enabled: true
+      export-to-prometheus: true
+      
+    tracing:
+      enabled: true
+      sampling-rate: 0.1
+      
+    logging:
+      level: INFO
+      pattern: "[%d{yyyy-MM-dd HH:mm:ss}] [%thread] [%X{requestId}] [%X{userId}] [%X{orgId}] %-5level %logger{36} - %msg%n"
+      
+# Actuator configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,gateway,circuitbreakers
+        
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      
+    gateway:
+      enabled: true
+      
+  metrics:
+    distribution:
+      percentiles-histogram:
+        spring.cloud.gateway.requests: true
+        
+    tags:
+      application: ${spring.application.name}
+      
+  health:
+    circuitbreakers:
+      enabled: true
+      
+    redis:
+      enabled: true
+      
+# Logging configuration
+logging:
+  level:
+    org.springframework.cloud.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    com.zamaz.mcp.gateway: ${GATEWAY_LOG_LEVEL:INFO}
+    io.github.resilience4j: WARN
+    
+  pattern:
+    console: "[%d{yyyy-MM-dd HH:mm:ss}] [%thread] [%X{requestId}] [%X{userId}] [%X{orgId}] %-5level %logger{36} - %msg%n"
+    file: "[%d{yyyy-MM-dd HH:mm:ss}] [%thread] [%X{requestId}] [%X{userId}] [%X{orgId}] %-5level %logger{36} - %msg%n"
+    
+# Server configuration
+server:
+  port: ${GATEWAY_PORT:8080}
+  
+  # Compression
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+    
+  # Error handling
+  error:
+    include-message: always
+    include-binding-errors: always
+    
+  # HTTP/2 support
+  http2:
+    enabled: true
+    
+# Resilience4j configuration
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 100
+        minimumNumberOfCalls: 10
+        permittedNumberOfCallsInHalfOpenState: 10
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 60s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 3s
+        
+    instances:
+      organization-cb:
+        baseConfig: default
+        
+      debate-cb:
+        baseConfig: default
+        
+      llm-cb:
+        baseConfig: default
+        slowCallDurationThreshold: 30s
+        
+      rag-cb:
+        baseConfig: default
+        slowCallDurationThreshold: 10s
+        
+      context-cb:
+        baseConfig: default
+        
+  retry:
+    configs:
+      default:
+        maxAttempts: 3
+        waitDuration: 1s
+        retryExceptions:
+          - java.io.IOException
+          - java.net.SocketTimeoutException
+        ignoreExceptions:
+          - com.zamaz.mcp.gateway.exception.BusinessException
+          
+    instances:
+      backend-retry:
+        baseConfig: default
+        
+  ratelimiter:
+    configs:
+      default:
+        registerHealthIndicator: true
+        limitForPeriod: 100
+        limitRefreshPeriod: 1s
+        timeoutDuration: 0
+        
+    instances:
+      backend-ratelimiter:
+        baseConfig: default

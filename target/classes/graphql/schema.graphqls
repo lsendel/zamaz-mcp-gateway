@@ -1,0 +1,361 @@
+# GraphQL Schema for MCP Debate System
+
+# Root Query Type
+type Query {
+    # Organization queries
+    organization(id: ID!): Organization
+    organizations(
+        first: Int = 10
+        after: String
+        filter: OrganizationFilter
+    ): OrganizationConnection!
+    
+    # User queries
+    user(id: ID!): User
+    users(
+        first: Int = 10
+        after: String
+        filter: UserFilter
+    ): UserConnection!
+    
+    # Debate queries
+    debate(id: ID!): Debate
+    debates(
+        first: Int = 10
+        after: String
+        filter: DebateFilter
+    ): DebateConnection!
+    
+    # Search debates
+    searchDebates(
+        query: String!
+        first: Int = 10
+        after: String
+    ): DebateConnection!
+    
+    # Statistics
+    debateStats(
+        organizationId: ID
+        timeRange: TimeRange
+    ): DebateStatistics!
+}
+
+# Root Mutation Type
+type Mutation {
+    # Organization mutations
+    createOrganization(input: CreateOrganizationInput!): CreateOrganizationPayload!
+    updateOrganization(input: UpdateOrganizationInput!): UpdateOrganizationPayload!
+    deleteOrganization(id: ID!): DeleteOrganizationPayload!
+    
+    # User mutations
+    createUser(input: CreateUserInput!): CreateUserPayload!
+    updateUser(input: UpdateUserInput!): UpdateUserPayload!
+    deleteUser(id: ID!): DeleteUserPayload!
+    
+    # Debate mutations
+    createDebate(input: CreateDebateInput!): CreateDebatePayload!
+    updateDebate(input: UpdateDebateInput!): UpdateDebatePayload!
+    deleteDebate(id: ID!): DeleteDebatePayload!
+    
+    # Debate participation
+    joinDebate(debateId: ID!): JoinDebatePayload!
+    leaveDebate(debateId: ID!): LeaveDebatePayload!
+    
+    # Argument mutations
+    submitArgument(input: SubmitArgumentInput!): SubmitArgumentPayload!
+    voteOnArgument(input: VoteOnArgumentInput!): VoteOnArgumentPayload!
+}
+
+# Root Subscription Type
+type Subscription {
+    # Debate updates
+    debateUpdates(debateId: ID!): DebateUpdatePayload!
+    
+    # Argument updates
+    argumentAdded(debateId: ID!): ArgumentAddedPayload!
+    
+    # User presence
+    userJoined(debateId: ID!): UserJoinedPayload!
+    userLeft(debateId: ID!): UserLeftPayload!
+    
+    # Vote updates
+    voteUpdated(debateId: ID!): VoteUpdatedPayload!
+}
+
+# Custom Scalars
+scalar DateTime
+scalar JSON
+
+# Directives
+directive @auth(
+    requires: Role = USER
+    permissions: [String!]
+) on FIELD_DEFINITION
+
+directive @rateLimit(
+    max: Int = 100
+    window: Int = 60
+) on FIELD_DEFINITION
+
+directive @validate(
+    constraint: String!
+) on ARGUMENT_DEFINITION | INPUT_FIELD_DEFINITION
+
+# Enums
+enum Role {
+    USER
+    ADMIN
+    MODERATOR
+    SUPER_ADMIN
+}
+
+enum DebateStatus {
+    DRAFT
+    ACTIVE
+    PAUSED
+    COMPLETED
+    CANCELLED
+}
+
+enum ArgumentType {
+    OPENING
+    RESPONSE
+    REBUTTAL
+    CLOSING
+}
+
+enum VoteType {
+    FOR
+    AGAINST
+    ABSTAIN
+}
+
+enum TimeRange {
+    LAST_HOUR
+    LAST_DAY
+    LAST_WEEK
+    LAST_MONTH
+    LAST_YEAR
+    ALL_TIME
+}
+
+# Input Types
+input OrganizationFilter {
+    name: String
+    status: String
+    createdAfter: DateTime
+    createdBefore: DateTime
+}
+
+input UserFilter {
+    name: String
+    email: String
+    organizationId: ID
+    role: Role
+    isActive: Boolean
+}
+
+input DebateFilter {
+    title: String
+    status: DebateStatus
+    organizationId: ID
+    createdBy: ID
+    tags: [String!]
+    createdAfter: DateTime
+    createdBefore: DateTime
+}
+
+input CreateOrganizationInput {
+    name: String! @validate(constraint: "size(min=1, max=100)")
+    description: String
+    settings: JSON
+}
+
+input UpdateOrganizationInput {
+    id: ID!
+    name: String @validate(constraint: "size(min=1, max=100)")
+    description: String
+    settings: JSON
+}
+
+input CreateUserInput {
+    email: String! @validate(constraint: "email")
+    name: String! @validate(constraint: "size(min=1, max=100)")
+    organizationId: ID!
+    role: Role = USER
+}
+
+input UpdateUserInput {
+    id: ID!
+    email: String @validate(constraint: "email")
+    name: String @validate(constraint: "size(min=1, max=100)")
+    role: Role
+    isActive: Boolean
+}
+
+input CreateDebateInput {
+    title: String! @validate(constraint: "size(min=1, max=200)")
+    description: String!
+    organizationId: ID!
+    tags: [String!]
+    maxParticipants: Int @validate(constraint: "min(2)")
+    timeLimit: Int
+    rules: JSON
+    isPublic: Boolean = true
+}
+
+input UpdateDebateInput {
+    id: ID!
+    title: String @validate(constraint: "size(min=1, max=200)")
+    description: String
+    tags: [String!]
+    maxParticipants: Int @validate(constraint: "min(2)")
+    timeLimit: Int
+    rules: JSON
+    status: DebateStatus
+}
+
+input SubmitArgumentInput {
+    debateId: ID!
+    content: String! @validate(constraint: "size(min=1, max=5000)")
+    type: ArgumentType!
+    parentArgumentId: ID
+    attachments: [String!]
+}
+
+input VoteOnArgumentInput {
+    argumentId: ID!
+    voteType: VoteType!
+    comment: String
+}
+
+# Payload Types
+type CreateOrganizationPayload {
+    organization: Organization
+    errors: [UserError!]!
+}
+
+type UpdateOrganizationPayload {
+    organization: Organization
+    errors: [UserError!]!
+}
+
+type DeleteOrganizationPayload {
+    deletedOrganizationId: ID
+    errors: [UserError!]!
+}
+
+type CreateUserPayload {
+    user: User
+    errors: [UserError!]!
+}
+
+type UpdateUserPayload {
+    user: User
+    errors: [UserError!]!
+}
+
+type DeleteUserPayload {
+    deletedUserId: ID
+    errors: [UserError!]!
+}
+
+type CreateDebatePayload {
+    debate: Debate
+    errors: [UserError!]!
+}
+
+type UpdateDebatePayload {
+    debate: Debate
+    errors: [UserError!]!
+}
+
+type DeleteDebatePayload {
+    deletedDebateId: ID
+    errors: [UserError!]!
+}
+
+type JoinDebatePayload {
+    debate: Debate
+    user: User
+    errors: [UserError!]!
+}
+
+type LeaveDebatePayload {
+    debate: Debate
+    user: User
+    errors: [UserError!]!
+}
+
+type SubmitArgumentPayload {
+    argument: Argument
+    errors: [UserError!]!
+}
+
+type VoteOnArgumentPayload {
+    vote: Vote
+    errors: [UserError!]!
+}
+
+# Subscription Payload Types
+type DebateUpdatePayload {
+    debate: Debate!
+    updateType: String!
+    timestamp: DateTime!
+}
+
+type ArgumentAddedPayload {
+    argument: Argument!
+    debate: Debate!
+    timestamp: DateTime!
+}
+
+type UserJoinedPayload {
+    user: User!
+    debate: Debate!
+    timestamp: DateTime!
+}
+
+type UserLeftPayload {
+    user: User!
+    debate: Debate!
+    timestamp: DateTime!
+}
+
+type VoteUpdatedPayload {
+    vote: Vote!
+    argument: Argument!
+    timestamp: DateTime!
+}
+
+# Error Types
+type UserError {
+    field: String
+    message: String!
+    code: String
+}
+
+# Statistics Types
+type DebateStatistics {
+    totalDebates: Int!
+    activeDebates: Int!
+    completedDebates: Int!
+    totalArguments: Int!
+    totalVotes: Int!
+    averageDebateDuration: Float!
+    topTags: [TagStatistic!]!
+    participationTrends: [ParticipationTrend!]!
+}
+
+type TagStatistic {
+    tag: String!
+    count: Int!
+    percentage: Float!
+}
+
+type ParticipationTrend {
+    date: DateTime!
+    debates: Int!
+    arguments: Int!
+    votes: Int!
+}

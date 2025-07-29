@@ -1,0 +1,314 @@
+# OAuth2 and SSO Configuration
+oauth2:
+  # Base URL for OAuth2 redirects
+  base-url: ${OAUTH2_BASE_URL:http://localhost:8080}
+  
+  # Redirect URI pattern for OAuth2 providers
+  redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/login/oauth2/code/}
+  
+  # Success redirect URI (where to redirect after successful OAuth2 login)
+  success-redirect-uri: ${OAUTH2_SUCCESS_REDIRECT_URI:http://localhost:3000/dashboard}
+  
+  # Failure redirect URI (where to redirect after failed OAuth2 login)
+  failure-redirect-uri: ${OAUTH2_FAILURE_REDIRECT_URI:http://localhost:3000/login?error=oauth2}
+  
+  # Session timeout for OAuth2 sessions (in seconds)
+  session-timeout: ${OAUTH2_SESSION_TIMEOUT:3600}
+  
+  # Google OAuth2 Configuration
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    enabled: ${GOOGLE_OAUTH2_ENABLED:true}
+    
+    # Additional Google-specific configuration
+    hosted-domain: ${GOOGLE_HOSTED_DOMAIN:} # Restrict to specific domain
+    
+    # Custom scopes (optional)
+    additional-scopes:
+      - https://www.googleapis.com/auth/userinfo.profile
+      - https://www.googleapis.com/auth/userinfo.email
+  
+  # Microsoft Azure AD OAuth2 Configuration
+  microsoft:
+    client-id: ${MICROSOFT_CLIENT_ID:}
+    client-secret: ${MICROSOFT_CLIENT_SECRET:}
+    tenant-id: ${MICROSOFT_TENANT_ID:common}
+    enabled: ${MICROSOFT_OAUTH2_ENABLED:true}
+    
+    # Microsoft-specific configuration
+    resource: ${MICROSOFT_RESOURCE:https://graph.microsoft.com}
+    
+    # Custom scopes (optional)
+    additional-scopes:
+      - https://graph.microsoft.com/user.read
+      - https://graph.microsoft.com/email
+  
+  # GitHub OAuth2 Configuration
+  github:
+    client-id: ${GITHUB_CLIENT_ID:}
+    client-secret: ${GITHUB_CLIENT_SECRET:}
+    enabled: ${GITHUB_OAUTH2_ENABLED:true}
+    
+    # GitHub-specific configuration
+    allow-signup: ${GITHUB_ALLOW_SIGNUP:true}
+    
+    # Custom scopes (optional)
+    additional-scopes:
+      - user:email
+      - read:user
+      - read:org
+  
+  # Custom OIDC Provider Configuration
+  custom:
+    client-id: ${CUSTOM_CLIENT_ID:}
+    client-secret: ${CUSTOM_CLIENT_SECRET:}
+    issuer-uri: ${CUSTOM_ISSUER_URI:}
+    jwk-set-uri: ${CUSTOM_JWK_SET_URI:}
+    enabled: ${CUSTOM_OAUTH2_ENABLED:true}
+    
+    # Custom provider details
+    provider-name: ${CUSTOM_PROVIDER_NAME:Custom OIDC}
+    
+    # Custom scopes (optional)
+    additional-scopes:
+      - openid
+      - profile
+      - email
+      - roles
+  
+  # SAML SSO Configuration (future enhancement)
+  saml:
+    enabled: ${SAML_ENABLED:false}
+    entity-id: ${SAML_ENTITY_ID:}
+    metadata-url: ${SAML_METADATA_URL:}
+    keystore-location: ${SAML_KEYSTORE_LOCATION:}
+    keystore-password: ${SAML_KEYSTORE_PASSWORD:}
+    key-alias: ${SAML_KEY_ALIAS:}
+    key-password: ${SAML_KEY_PASSWORD:}
+  
+  # Security Configuration
+  security:
+    # CSRF protection for OAuth2 endpoints
+    csrf-protection: ${OAUTH2_CSRF_PROTECTION:true}
+    
+    # State parameter verification
+    state-verification: ${OAUTH2_STATE_VERIFICATION:true}
+    
+    # Nonce verification for OIDC
+    nonce-verification: ${OAUTH2_NONCE_VERIFICATION:true}
+    
+    # PKCE (Proof Key for Code Exchange) support
+    pkce-enabled: ${OAUTH2_PKCE_ENABLED:true}
+    
+    # JWT token configuration
+    jwt:
+      # Token expiration time (in seconds)
+      expiration: ${OAUTH2_JWT_EXPIRATION:3600}
+      
+      # Refresh token expiration time (in seconds)
+      refresh-expiration: ${OAUTH2_JWT_REFRESH_EXPIRATION:86400}
+      
+      # Include user info in JWT token
+      include-user-info: ${OAUTH2_JWT_INCLUDE_USER_INFO:true}
+  
+  # User Management Configuration
+  user-management:
+    # Auto-create user accounts from OAuth2 providers
+    auto-create-users: ${OAUTH2_AUTO_CREATE_USERS:true}
+    
+    # Auto-verify email addresses from trusted providers
+    auto-verify-email: ${OAUTH2_AUTO_VERIFY_EMAIL:true}
+    
+    # Default role for new OAuth2 users
+    default-role: ${OAUTH2_DEFAULT_ROLE:USER}
+    
+    # Default organization for new OAuth2 users
+    default-organization: ${OAUTH2_DEFAULT_ORGANIZATION:default-org}
+    
+    # Update user info from OAuth2 provider on each login
+    update-user-info: ${OAUTH2_UPDATE_USER_INFO:true}
+    
+    # Link OAuth2 accounts to existing users by email
+    link-by-email: ${OAUTH2_LINK_BY_EMAIL:true}
+    
+    # Account linking settings
+    account-linking:
+      # Allow users to link multiple OAuth2 providers
+      allow-multiple-providers: ${OAUTH2_ALLOW_MULTIPLE_PROVIDERS:true}
+      
+      # Require confirmation for account linking
+      require-confirmation: ${OAUTH2_REQUIRE_CONFIRMATION:true}
+      
+      # Maximum number of linked accounts per user
+      max-linked-accounts: ${OAUTH2_MAX_LINKED_ACCOUNTS:5}
+  
+  # Rate Limiting Configuration
+  rate-limiting:
+    # OAuth2 authentication attempts per IP per minute
+    auth-attempts-per-ip: ${OAUTH2_AUTH_ATTEMPTS_PER_IP:10}
+    
+    # OAuth2 authentication attempts per user per minute
+    auth-attempts-per-user: ${OAUTH2_AUTH_ATTEMPTS_PER_USER:5}
+    
+    # Account linking attempts per user per hour
+    link-attempts-per-user: ${OAUTH2_LINK_ATTEMPTS_PER_USER:5}
+    
+    # Rate limit window (in seconds)
+    rate-limit-window: ${OAUTH2_RATE_LIMIT_WINDOW:3600}
+  
+  # Monitoring and Logging Configuration
+  monitoring:
+    # Enable OAuth2 metrics collection
+    metrics-enabled: ${OAUTH2_METRICS_ENABLED:true}
+    
+    # Log OAuth2 authentication attempts
+    log-auth-attempts: ${OAUTH2_LOG_AUTH_ATTEMPTS:true}
+    
+    # Log OAuth2 user info retrieval
+    log-user-info: ${OAUTH2_LOG_USER_INFO:true}
+    
+    # Log OAuth2 token exchange
+    log-token-exchange: ${OAUTH2_LOG_TOKEN_EXCHANGE:false}
+    
+    # Audit OAuth2 events
+    audit-events: ${OAUTH2_AUDIT_EVENTS:true}
+  
+  # Provider-specific User Attribute Mapping
+  user-attribute-mapping:
+    google:
+      user-id: sub
+      email: email
+      first-name: given_name
+      last-name: family_name
+      full-name: name
+      profile-picture: picture
+      email-verified: email_verified
+      locale: locale
+      
+    microsoft:
+      user-id: sub
+      email: email
+      first-name: given_name
+      last-name: family_name
+      full-name: name
+      profile-picture: picture
+      email-verified: email_verified
+      preferred-username: preferred_username
+      
+    github:
+      user-id: id
+      email: email
+      first-name: name # Will be parsed
+      last-name: name # Will be parsed
+      full-name: name
+      profile-picture: avatar_url
+      username: login
+      company: company
+      location: location
+      
+    custom:
+      user-id: sub
+      email: email
+      first-name: given_name
+      last-name: family_name
+      full-name: name
+      profile-picture: picture
+      email-verified: email_verified
+      roles: roles
+      groups: groups
+
+# Spring Security OAuth2 Client Configuration
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          # These will be dynamically configured based on the above settings
+          google:
+            client-id: ${oauth2.google.client-id}
+            client-secret: ${oauth2.google.client-secret}
+            scope: openid,profile,email
+            redirect-uri: ${oauth2.redirect-uri}google
+            client-name: Google
+            
+          microsoft:
+            client-id: ${oauth2.microsoft.client-id}
+            client-secret: ${oauth2.microsoft.client-secret}
+            scope: openid,profile,email
+            redirect-uri: ${oauth2.redirect-uri}microsoft
+            client-name: Microsoft
+            
+          github:
+            client-id: ${oauth2.github.client-id}
+            client-secret: ${oauth2.github.client-secret}
+            scope: user:email,read:user
+            redirect-uri: ${oauth2.redirect-uri}github
+            client-name: GitHub
+            
+          custom:
+            client-id: ${oauth2.custom.client-id}
+            client-secret: ${oauth2.custom.client-secret}
+            scope: openid,profile,email
+            redirect-uri: ${oauth2.redirect-uri}custom
+            client-name: ${oauth2.custom.provider-name}
+            
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://www.googleapis.com/oauth2/v4/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+            jwk-set-uri: https://www.googleapis.com/oauth2/v3/certs
+            
+          microsoft:
+            authorization-uri: https://login.microsoftonline.com/${oauth2.microsoft.tenant-id}/oauth2/v2.0/authorize
+            token-uri: https://login.microsoftonline.com/${oauth2.microsoft.tenant-id}/oauth2/v2.0/token
+            user-info-uri: https://graph.microsoft.com/oidc/userinfo
+            user-name-attribute: sub
+            jwk-set-uri: https://login.microsoftonline.com/${oauth2.microsoft.tenant-id}/discovery/v2.0/keys
+            
+          github:
+            authorization-uri: https://github.com/login/oauth/authorize
+            token-uri: https://github.com/login/oauth/access_token
+            user-info-uri: https://api.github.com/user
+            user-name-attribute: id
+            
+          custom:
+            issuer-uri: ${oauth2.custom.issuer-uri}
+            authorization-uri: ${oauth2.custom.issuer-uri}/auth
+            token-uri: ${oauth2.custom.issuer-uri}/token
+            user-info-uri: ${oauth2.custom.issuer-uri}/userinfo
+            user-name-attribute: sub
+            jwk-set-uri: ${oauth2.custom.jwk-set-uri}
+
+# Logging Configuration for OAuth2
+logging:
+  level:
+    org.springframework.security.oauth2: ${OAUTH2_LOG_LEVEL:INFO}
+    com.zamaz.mcp.gateway.config.OAuth2Config: INFO
+    com.zamaz.mcp.gateway.service.OAuth2UserService: INFO
+    com.zamaz.mcp.gateway.controller.OAuth2Controller: INFO
+    
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{userId}] [%X{orgId}] [%X{provider}] %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [%X{userId}] [%X{orgId}] [%X{provider}] %logger{36} - %msg%n"
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+        
+  metrics:
+    tags:
+      service: oauth2-gateway
+      
+  endpoint:
+    health:
+      show-details: always
+      
+  health:
+    oauth2:
+      enabled: true
